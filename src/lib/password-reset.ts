@@ -4,7 +4,6 @@ type PasswordResetRequest = {
   email: string;
   expiresAt: number;
 };
-
 const resetRequests = new Map<string, PasswordResetRequest>();
 
 const RESET_WINDOW_MS = 1000 * 60 * 30; // 30 minutes
