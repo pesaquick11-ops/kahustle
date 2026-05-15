@@ -41,7 +41,16 @@ export function getPasswordResetLink(token: string) {
 }
 
 export async function sendPasswordResetEmail(email: string, resetLink: string) {
-  // Replace this with your mail provider implementation.
-  // Keeping this as a log-only fallback so local development works by default.
-  console.info(`Password reset email for ${email}: ${resetLink}`);
+    const smtpHost = process.env.SMTP_HOST;
+  const smtpUser = process.env.SMTP_USER;
+  const smtpPass = process.env.SMTP_PASS;
+
+  if (!smtpHost || !smtpUser || !smtpPass) {
+    console.info(`Password reset email for ${email}: ${resetLink}`);
+    return;
+  }
+
+  // SMTP delivery is not wired to a transport library in this project,
+  // so we keep a safe fallback until one is added.
+  console.info(`SMTP configured for ${smtpHost}. Reset email for ${email}: ${resetLink}`);
 }
