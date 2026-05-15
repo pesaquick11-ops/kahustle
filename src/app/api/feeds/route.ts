@@ -4,6 +4,7 @@ import { Vehicle } from "@/models/Vehicle"
 import { Property } from "@/models/Property"
 import { Job } from "@/models/Job"
 import { ConstructionService } from "@/models/ConstructionService"
+import { feedNormalizers } from "@/lib/feed-normalizers"
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,12 +13,6 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const page = Math.max(1, Number.parseInt(searchParams.get("page") || "1", 10))
     const limit = Math.min(50, Math.max(1, Number.parseInt(searchParams.get("limit") || "20", 10)))
-    const sortBy = searchParams.get("sortBy") || "createdAt"
-    const sortOrder = searchParams.get("sortOrder") === "asc" ? 1 : -1
-    const search = searchParams.get("search")?.trim()
-    const categories = searchParams.getAll("categories").map((c) => c.toLowerCase().trim()).filter(Boolean)
-    const priceMin = searchParams.get("priceMin")
-    const priceMax = searchParams.get("priceMax")
 
     // Base filter for all models
     const baseFilter: Record<string, unknown> = { status: "active" }
@@ -99,7 +94,6 @@ export async function GET(request: NextRequest) {
           : ConstructionService.find(baseFilter).sort(sortConfig).lean(),
     ])
 
-    // Combine and normalize results
     const allItems = [
       ...vehicles.map((v: any) => ({ ...v, _model: "Vehicle", category: "vehicles" })),
       ...properties.map((p: any) => ({ ...p, _model: "Property", category: "properties" })),
@@ -140,10 +134,9 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // Paginate
-    const totalCount = filteredItems.length
+    const totalCount = allItems.length
     const skip = (page - 1) * limit
-    const paginatedItems = filteredItems.slice(skip, skip + limit)
+    const paginatedItems = allItems.slice(skip, skip + limit)
     const totalPages = Math.max(1, Math.ceil(totalCount / limit))
 
     console.log("[v0] Feeds API results:", {
