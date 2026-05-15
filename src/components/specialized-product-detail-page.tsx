@@ -5,14 +5,25 @@ import { Eye, Clock, Mail, MapPin, Phone, User } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { connectToDatabase } from "@/lib/db"
-import { Types } from "mongoose"
+import { Model, Types } from "mongoose"
 
 interface DetailConfig {
   category: string
   listingLabel: string
-  model: { findByIdAndUpdate: (...args: unknown[]) => { populate: (path: string, fields: string) => { lean: () => Promise<Record<string, unknown> | null> } } }
+  model: Model<unknown>
   callbackPrefix: string
-  details: (item: Record<string, any>) => Array<{ label: string; value: string }>
+  details: (item: Record<string, unknown>) => Array<{ label: string; value: string }>
+}
+
+interface ProductDoc extends Record<string, unknown> {
+  name: string
+  price: number
+  views: number
+  createdAt: string | Date
+  status: string
+  description?: string
+  images?: string[]
+  userId?: Record<string, string | undefined>
 }
 
 export default async function SpecializedProductDetailPage({
@@ -36,13 +47,13 @@ export default async function SpecializedProductDetailPage({
   const product = await config.model
     .findByIdAndUpdate(id, { $inc: { views: 1 } }, { new: true })
     .populate("userId", "name email phone image address")
-    .lean()
+    .lean<ProductDoc | null>()
 
   if (!product || product.status !== "active") {
     notFound()
   }
 
-  const seller = product.userId as Record<string, string | undefined>
+  const seller = product.userId ?? {}
 
   return (
     <main className="container mx-auto max-w-5xl px-4 py-8">
