@@ -29,7 +29,7 @@ export default function ShareComponent({
     const [copied, setCopied] = useState(false)
 
     const baseUrl = typeof window !== "undefined" ? window.location.origin : ""
-    const shareUrl = shopId ? `${baseUrl}/shop/${shopId}` : baseUrl
+    const shareUrl = shopId ? `${baseUrl}/shop/${shopId}` : productId ? `${baseUrl}/product/${productId}` : baseUrl
 
 
     const title = productName || shopName || "Check this out on Duka"

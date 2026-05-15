@@ -6,14 +6,15 @@ const CATEGORY_ROUTE_PREFIX: Record<string, string> = {
 }
 
 export function getProductDetailLink(category: string | undefined, id: string): string {
-  const normalizedCategory = category?.trim().toLowerCase()
-  if (!normalizedCategory) {
-    return "#"
+  if (!category) {
+    return `/product/${id}`
   }
 
+  const normalizedCategory = category.trim().toLowerCase()
   const categoryPath = CATEGORY_ROUTE_PREFIX[normalizedCategory]
+
   if (!categoryPath) {
-    return "#"
+    return `/product/${id}`
   }
 
   return `${categoryPath}/${id}`

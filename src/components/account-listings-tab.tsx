@@ -9,26 +9,19 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import Image from "next/image"
 import Link from "next/link"
+import type { IProduct } from "@/models/Product"
 import { MainCategory } from "@/lib/categories"
 import { Role } from "@/lib/roles"
 import { CreateVehicleForm } from "@/components/forms/create-vehicle-form"
 import { CreatePropertyForm } from "@/components/forms/create-property-form"
 import { CreateJobForm } from "@/components/forms/create-job-form"
 import { CreateConstructionServiceForm } from "@/components/forms/create-construction-service-form"
-import { getProductDetailLink } from "@/lib/product-links"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface Product {
+interface Product extends Omit<IProduct, "_id" | "userId"> {
     _id: string
     userId: string
-    name: string
-    price: number
-    category?: string
-    images: string[]
-    status: "active" | "inactive"
-    views: number
-    createdAt: string
 }
 
 interface ISubcategory {
@@ -126,12 +119,13 @@ export default function AccountListingsTab() {
 
         const load = async () => {
             try {
-                const [catRes, vehiclesRes, propertiesRes, jobsRes, constructionRes] = await Promise.all([
+                const [catRes, vehiclesRes, propertiesRes, jobsRes, constructionRes, productsRes] = await Promise.all([
                     fetch("/api/categories"),
                     fetch(canManageAll ? "/api/vehicles" : `/api/vehicles?userId=${session.user.id}`),
                     fetch(canManageAll ? "/api/properties" : `/api/properties?userId=${session.user.id}`),
                     fetch(canManageAll ? "/api/jobs" : `/api/jobs?userId=${session.user.id}`),
                     fetch(canManageAll ? "/api/construction-services" : `/api/construction-services?userId=${session.user.id}`),
+                    fetch(canManageAll ? "/api/products" : `/api/products?userId=${session.user.id}`),
                 ])
                 
                 const catData = await catRes.json()
@@ -139,11 +133,13 @@ export default function AccountListingsTab() {
                 const propertiesData = await propertiesRes.json()
                 const jobsData = await jobsRes.json()
                 const constructionData = await constructionRes.json()
-                
+                const productsData = await productsRes.json()
+
                 if (catData.categories) setCategories(catData.categories)
                 
                 // Aggregate all products from different endpoints
                 const allProducts: Product[] = [
+                    ...(productsData.products || []),
                     ...(vehiclesData.vehicles || []),
                     ...(propertiesData.properties || []),
                     ...(jobsData.jobs || []),
@@ -151,7 +147,7 @@ export default function AccountListingsTab() {
                 ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
                 
                 setProducts(allProducts)
-                if (allProducts.length === 0 && !vehiclesData.vehicles && !propertiesData.properties && !jobsData.jobs && !constructionData.services) {
+                if (allProducts.length === 0 && !productsData.success && !vehiclesData.vehicles && !propertiesData.properties && !jobsData.jobs && !constructionData.services) {
                     setError("Failed to load your listings")
                 }
             } catch (err) {
@@ -242,20 +238,23 @@ export default function AccountListingsTab() {
             setTimeout(() => {
                 const load = async () => {
                     try {
-                        const [vehiclesRes, propertiesRes, jobsRes, constructionRes] = await Promise.all([
+                        const [vehiclesRes, propertiesRes, jobsRes, constructionRes, productsRes] = await Promise.all([
                             fetch(canManageAll ? "/api/vehicles" : `/api/vehicles?userId=${session.user.id}`),
                             fetch(canManageAll ? "/api/properties" : `/api/properties?userId=${session.user.id}`),
                             fetch(canManageAll ? "/api/jobs" : `/api/jobs?userId=${session.user.id}`),
                             fetch(canManageAll ? "/api/construction-services" : `/api/construction-services?userId=${session.user.id}`),
+                            fetch(canManageAll ? "/api/products" : `/api/products?userId=${session.user.id}`),
                         ])
                         
                         const vehiclesData = await vehiclesRes.json()
                         const propertiesData = await propertiesRes.json()
                         const jobsData = await jobsRes.json()
                         const constructionData = await constructionRes.json()
-                                                
+                        const productsData = await productsRes.json()
+                        
                         const allProducts: Product[] = [
-                                    ...(vehiclesData.vehicles || []),
+                            ...(productsData.products || []),
+                            ...(vehiclesData.vehicles || []),
                             ...(propertiesData.properties || []),
                             ...(jobsData.jobs || []),
                             ...(constructionData.services || []),
@@ -284,6 +283,7 @@ export default function AccountListingsTab() {
         try {
             // Try deleting from all possible endpoints since we don't know which type it is
             const endpoints = [
+                `/api/products/${id}`,
                 `/api/vehicles/${id}`,
                 `/api/properties/${id}`,
                 `/api/jobs/${id}`,
@@ -415,7 +415,7 @@ export default function AccountListingsTab() {
                                             {product.status}
                                         </span>
                                         <Button variant="ghost" size="sm" asChild className="text-xs">
-                                            <Link href={getProductDetailLink(product.category, product._id)}>View</Link>
+                                            <Link href={`/product/${product._id}`}>View</Link>
                                         </Button>
                                         <Button
                                             variant="ghost"
