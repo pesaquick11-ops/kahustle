@@ -96,7 +96,7 @@ export default function AccountPage() {
         { value: "settings", label: "Settings", show: true },
     ].filter((tab) => tab.show)), [canManageCategories, canManageUsers])
 
-    const [activeTab, setActiveTab] = useState("listings")
+    const [activeTab, setActiveTab] = useState("roles")
     const safeActiveTab = availableTabs.find((tab) => tab.value === activeTab)?.value || availableTabs[0]?.value || "listings"
 
     if (status === "loading") {
