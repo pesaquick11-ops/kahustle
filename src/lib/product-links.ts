@@ -1,21 +1,9 @@
-const CATEGORY_ROUTE_PREFIX: Record<string, string> = {
-  vehicles: "/vehicles/listing",
-  properties: "/properties/listing",
-  careers: "/careers/listing",
-  "construction-freelancers": "/construction-freelancers/listing",
-}
+import { CATEGORY_REGISTRY, type CategoryKey } from "@/lib/categories"
+import { getListingDetailRoute } from "@/lib/listing-routes"
 
 export function getProductDetailLink(category: string | undefined, id: string): string {
-  if (!category) {
-    return `/product/${id}`
-  }
-
-  const normalizedCategory = category.trim().toLowerCase()
-  const categoryPath = CATEGORY_ROUTE_PREFIX[normalizedCategory]
-
-  if (!categoryPath) {
-    return `/product/${id}`
-  }
-
-  return `${categoryPath}/${id}`
+  if (!category) return "#"
+  const normalizedCategory = category.trim().toLowerCase() as CategoryKey
+  if (!(normalizedCategory in CATEGORY_REGISTRY)) return "#"
+  return getListingDetailRoute(normalizedCategory, id)
 }
