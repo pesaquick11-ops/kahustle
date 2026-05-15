@@ -1,8 +1,8 @@
 import type { Role } from "@/lib/roles"
 import { MainCategory, CATEGORY_REGISTRY } from "@/lib/categories"
 
-type UserLike = { id?: string; _id?: string; roles?: string[] } | null | undefined
-type ListingLike = { userId?: string | { _id?: string } }
+type UserLike = { id?: string | null; _id?: string | null; roles?: string[] } | null | undefined
+type ListingLike = { userId?: string | null | { _id?: string | null } }
 
 export function hasRole(user: UserLike, role: Role): boolean {
   return !!user?.roles?.includes(role)
