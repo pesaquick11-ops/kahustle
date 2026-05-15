@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
 import { connectToDatabase } from "@/lib/db"
-import { Product } from "@/models/Product"
 import { Vehicle } from "@/models/Vehicle"
 import { Property } from "@/models/Property"
 import { Job } from "@/models/Job"
@@ -35,24 +34,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch from all models
-    const [products, vehicles, properties, jobs, constructionServices] = await Promise.all([
-      search
-        ? Product.find({
-            ...baseFilter,
-            $or: [
-              { name: { $regex: search, $options: "i" } },
-              { description: { $regex: search, $options: "i" } },
-            ],
-            ...(categories.length > 0 && { category: { $in: categories } }),
-          })
-            .sort(sortConfig)
-            .lean()
-        : categories.length > 0
-          ? Product.find({ ...baseFilter, category: { $in: categories } })
-              .sort(sortConfig)
-              .lean()
-          : Product.find(baseFilter).sort(sortConfig).lean(),
-
+    const [vehicles, properties, jobs, constructionServices] = await Promise.all([
       search
         ? Vehicle.find({
             ...baseFilter,
@@ -119,15 +101,10 @@ export async function GET(request: NextRequest) {
 
     // Combine and normalize results
     const allItems = [
-      ...products.map((p: any) => ({ ...p, _model: "Product", category: p.category })),
       ...vehicles.map((v: any) => ({ ...v, _model: "Vehicle", category: "vehicles" })),
       ...properties.map((p: any) => ({ ...p, _model: "Property", category: "properties" })),
       ...jobs.map((j: any) => ({ ...j, _model: "Job", category: "careers" })),
-      ...constructionServices.map((cs: any) => ({
-        ...cs,
-        _model: "ConstructionService",
-        category: cs.category?.toLowerCase() || "construction-service",
-      })),
+      ...constructionServices.map((cs: any) => ({ ...cs, _model: "ConstructionService", category: "construction-freelancers" })),
     ]
 
     // Apply search filtering if needed (for combined results)
@@ -173,7 +150,6 @@ export async function GET(request: NextRequest) {
       totalCount,
       page,
       limit,
-      products: products.length,
       vehicles: vehicles.length,
       properties: properties.length,
       jobs: jobs.length,
