@@ -1,7 +1,11 @@
 "use client";
 
 import { FormEvent, useMemo, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 
 export default function ResetPasswordPage() {
   const searchParams = useSearchParams();
@@ -33,27 +37,35 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <main style={{ maxWidth: 420, margin: "48px auto", padding: 16 }}>
-      <h1>Reset Password</h1>
-      <p>Choose your new password below.</p>
+    <main className="container mx-auto flex min-h-[75vh] max-w-md items-center px-4 py-10">
+      <Card className="w-full">
+        <CardHeader>
+          <CardTitle>Reset password</CardTitle>
+          <CardDescription>Create a new password with at least 8 characters.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-3">
+            <Input
+              type="password"
+              placeholder="New password"
+              minLength={8}
+              required
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+            />
+            <Button type="submit" disabled={isLoading || !token} className="w-full">
+              {isLoading ? "Saving..." : "Reset password"}
+            </Button>
+          </form>
 
-      <form onSubmit={handleSubmit} style={{ display: "grid", gap: 12 }}>
-        <input
-          type="password"
-          placeholder="New password"
-          minLength={8}
-          required
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-          style={{ padding: 10 }}
-        />
-        <button type="submit" disabled={isLoading || !token} style={{ padding: 10 }}>
-          {isLoading ? "Saving..." : "Reset Password"}
-        </button>
-      </form>
+          {!token ? <p className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">Reset token is missing. Please use the link from your email.</p> : null}
+          {message ? <p className="rounded-md bg-muted p-3 text-sm">{message}</p> : null}
 
-      {!token ? <p style={{ color: "crimson" }}>Reset token is missing.</p> : null}
-      {message ? <p style={{ marginTop: 12 }}>{message}</p> : null}
+          <p className="text-center text-sm text-muted-foreground">
+            Back to <Link href="/signin" className="text-primary hover:underline">Sign in</Link>
+          </p>
+        </CardContent>
+      </Card>
     </main>
   );
 }
