@@ -12,10 +12,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Email is required." }, { status: 400 });
   }
 
-  const token = createPasswordResetToken(email);
-  const resetLink = getPasswordResetLink(token);
-
-  await sendPasswordResetEmail(email, resetLink);
+  const token = await createPasswordResetToken(email);
+  if (token) {
+    const resetLink = getPasswordResetLink(token);
+    await sendPasswordResetEmail(email, resetLink);
+  }
 
   return NextResponse.json({
     message:
