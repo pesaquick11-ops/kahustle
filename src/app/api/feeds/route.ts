@@ -14,24 +14,141 @@ export async function GET(request: NextRequest) {
     const page = Math.max(1, Number.parseInt(searchParams.get("page") || "1", 10))
     const limit = Math.min(50, Math.max(1, Number.parseInt(searchParams.get("limit") || "20", 10)))
 
+    // Base filter for all models
+    const baseFilter: Record<string, unknown> = { status: "active" }
+
+    if (priceMin || priceMax) {
+      baseFilter.price = {
+        ...(priceMin ? { $gte: Number.parseFloat(priceMin) } : {}),
+        ...(priceMax ? { $lte: Number.parseFloat(priceMax) } : {}),
+      }
+    }
+
+    const sortConfig: Record<string, 1 | -1> = {
+      [sortBy === "price" || sortBy === "name" || sortBy === "createdAt" ? sortBy : "createdAt"]: sortOrder,
+    }
+
+    // Fetch from all models
     const [vehicles, properties, jobs, constructionServices] = await Promise.all([
-      Vehicle.find({ status: "active" }).lean(),
-      Property.find({ status: "active" }).lean(),
-      Job.find({ status: "active" }).lean(),
-      ConstructionService.find({ status: "active" }).lean(),
+      search
+        ? Vehicle.find({
+            ...baseFilter,
+            $or: [
+              { name: { $regex: search, $options: "i" } },
+              { description: { $regex: search, $options: "i" } },
+            ],
+          })
+            .sort(sortConfig)
+            .lean()
+        : categories.length === 0
+          ? Vehicle.find(baseFilter).sort(sortConfig).lean()
+          : Vehicle.find(baseFilter).sort(sortConfig).lean(), // Vehicles don't have category filter
+
+      search
+        ? Property.find({
+            ...baseFilter,
+            $or: [
+              { name: { $regex: search, $options: "i" } },
+              { description: { $regex: search, $options: "i" } },
+            ],
+          })
+            .sort(sortConfig)
+            .lean()
+        : categories.length === 0
+          ? Property.find(baseFilter).sort(sortConfig).lean()
+          : Property.find(baseFilter).sort(sortConfig).lean(),
+
+      search
+        ? Job.find({
+            ...baseFilter,
+            $or: [
+              { name: { $regex: search, $options: "i" } },
+              { description: { $regex: search, $options: "i" } },
+              { jobTitle: { $regex: search, $options: "i" } },
+            ],
+          })
+            .sort(sortConfig)
+            .lean()
+        : categories.length === 0
+          ? Job.find(baseFilter).sort(sortConfig).lean()
+          : Job.find(baseFilter).sort(sortConfig).lean(),
+
+      search
+        ? ConstructionService.find({
+            ...baseFilter,
+            $or: [
+              { name: { $regex: search, $options: "i" } },
+              { description: { $regex: search, $options: "i" } },
+              { category: { $regex: search, $options: "i" } },
+            ],
+          })
+            .sort(sortConfig)
+            .lean()
+        : categories.length > 0
+          ? ConstructionService.find({
+              ...baseFilter,
+              category: { $in: categories },
+            })
+              .sort(sortConfig)
+              .lean()
+          : ConstructionService.find(baseFilter).sort(sortConfig).lean(),
     ])
 
     const allItems = [
-      ...vehicles.map(feedNormalizers.vehicle),
-      ...properties.map(feedNormalizers.property),
-      ...jobs.map(feedNormalizers.career),
-      ...constructionServices.map(feedNormalizers.constructionFreelancer),
-    ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      ...vehicles.map((v: any) => ({ ...v, _model: "Vehicle", category: "vehicles" })),
+      ...properties.map((p: any) => ({ ...p, _model: "Property", category: "properties" })),
+      ...jobs.map((j: any) => ({ ...j, _model: "Job", category: "careers" })),
+      ...constructionServices.map((cs: any) => ({ ...cs, _model: "ConstructionService", category: "construction-freelancers" })),
+    ]
+
+    // Apply search filtering if needed (for combined results)
+    let filteredItems = allItems
+    if (search) {
+      const searchLower = search.toLowerCase()
+      filteredItems = allItems.filter(
+        (item: any) =>
+          item.name?.toLowerCase().includes(searchLower) ||
+          item.description?.toLowerCase().includes(searchLower) ||
+          item.jobTitle?.toLowerCase().includes(searchLower) ||
+          item.category?.toLowerCase().includes(searchLower)
+      )
+    }
+
+    // Sort combined results
+    const sortField = sortBy === "price" || sortBy === "name" || sortBy === "createdAt" ? sortBy : "createdAt"
+    if (sortField === "createdAt") {
+      filteredItems.sort((a: any, b: any) => {
+        const aTime = new Date(a.createdAt).getTime()
+        const bTime = new Date(b.createdAt).getTime()
+        return sortOrder === 1 ? aTime - bTime : bTime - aTime
+      })
+    } else if (sortField === "price") {
+      filteredItems.sort((a: any, b: any) => {
+        return sortOrder === 1 ? a.price - b.price : b.price - a.price
+      })
+    } else if (sortField === "name") {
+      filteredItems.sort((a: any, b: any) => {
+        const aName = (a.name || "").toLowerCase()
+        const bName = (b.name || "").toLowerCase()
+        return sortOrder === 1 ? aName.localeCompare(bName) : bName.localeCompare(aName)
+      })
+    }
 
     const totalCount = allItems.length
     const skip = (page - 1) * limit
     const paginatedItems = allItems.slice(skip, skip + limit)
     const totalPages = Math.max(1, Math.ceil(totalCount / limit))
+
+    console.log("[v0] Feeds API results:", {
+      totalCount,
+      page,
+      limit,
+      vehicles: vehicles.length,
+      properties: properties.length,
+      jobs: jobs.length,
+      constructionServices: constructionServices.length,
+      paginatedItems: paginatedItems.length,
+    })
 
     return NextResponse.json({
       products: paginatedItems,

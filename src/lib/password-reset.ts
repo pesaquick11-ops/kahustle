@@ -1,56 +1,61 @@
-import crypto from "node:crypto";
+import crypto from "node:crypto"
+import { connectToDatabase } from "@/lib/db"
+import { User } from "@/models/User"
 
-type PasswordResetRequest = {
-  email: string;
-  expiresAt: number;
-};
-const resetRequests = new Map<string, PasswordResetRequest>();
+const RESET_WINDOW_MS = 1000 * 60 * 30 // 30 minutes
 
-const RESET_WINDOW_MS = 1000 * 60 * 30; // 30 minutes
-
-export function createPasswordResetToken(email: string) {
-  const token = crypto.randomBytes(32).toString("hex");
-
-  resetRequests.set(token, {
-    email,
-    expiresAt: Date.now() + RESET_WINDOW_MS,
-  });
-
-  return token;
+function hashToken(token: string) {
+  return crypto.createHash("sha256").update(token).digest("hex")
 }
 
-export function consumePasswordResetToken(token: string) {
-  const request = resetRequests.get(token);
+export async function createPasswordResetToken(email: string) {
+  await connectToDatabase()
+  const user = await User.findOne({ email: email.toLowerCase() }).select("_id")
 
-  if (!request) {
-    return null;
+  if (!user) {
+    return null
   }
 
-  resetRequests.delete(token);
+  const token = crypto.randomBytes(32).toString("hex")
+  user.passwordResetTokenHash = hashToken(token)
+  user.passwordResetExpiresAt = new Date(Date.now() + RESET_WINDOW_MS)
+  await user.save()
 
-  if (request.expiresAt < Date.now()) {
-    return null;
+  return token
+}
+
+export async function consumePasswordResetToken(token: string) {
+  await connectToDatabase()
+  const tokenHash = hashToken(token)
+
+  const user = await User.findOne({
+    passwordResetTokenHash: tokenHash,
+    passwordResetExpiresAt: { $gt: new Date() },
+  }).select("+password email passwordResetTokenHash passwordResetExpiresAt")
+
+  if (!user) {
+    return null
   }
 
-  return request.email;
+  user.passwordResetTokenHash = undefined
+  user.passwordResetExpiresAt = undefined
+  return user
 }
 
 export function getPasswordResetLink(token: string) {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-  return `${appUrl}/reset-password?token=${token}`;
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"
+  return `${appUrl}/reset-password?token=${token}`
 }
 
 export async function sendPasswordResetEmail(email: string, resetLink: string) {
-    const smtpHost = process.env.SMTP_HOST;
-  const smtpUser = process.env.SMTP_USER;
-  const smtpPass = process.env.SMTP_PASS;
+  const smtpHost = process.env.SMTP_HOST
+  const smtpUser = process.env.SMTP_USER
+  const smtpPass = process.env.SMTP_PASS
 
   if (!smtpHost || !smtpUser || !smtpPass) {
-    console.info(`Password reset email for ${email}: ${resetLink}`);
-    return;
+    console.info(`Password reset email for ${email}: ${resetLink}`)
+    return
   }
 
-  // SMTP delivery is not wired to a transport library in this project,
-  // so we keep a safe fallback until one is added.
-  console.info(`SMTP configured for ${smtpHost}. Reset email for ${email}: ${resetLink}`);
+  console.info(`SMTP configured for ${smtpHost}. Reset email for ${email}: ${resetLink}`)
 }

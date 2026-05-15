@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { GeistSans } from "geist/font/sans";
+import { GeistMono } from "geist/font/mono";
 import "./globals.css";
 import Script from "next/script";
 
@@ -18,15 +19,9 @@ import Footer from "@/components/footer";
 // -----------------
 // Font Configuration
 // -----------------
-const geistSans = Geist({
-    variable: "--font-geist-sans",
-    subsets: ["latin"],
-});
+const geistSans = GeistSans;
 
-const geistMono = Geist_Mono({
-    variable: "--font-geist-mono",
-    subsets: ["latin"],
-});
+const geistMono = GeistMono;
 
 // -----------------
 // Viewport (Next.js 15+)

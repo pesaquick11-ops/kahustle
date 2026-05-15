@@ -15,17 +15,17 @@ export async function POST(request: Request) {
     );
   }
 
-  const email = consumePasswordResetToken(token);
+  const user = await consumePasswordResetToken(token);
 
-  if (!email) {
+  if (!user) {
     return NextResponse.json(
       { error: "Invalid or expired reset link." },
       { status: 400 },
     );
   }
 
-  // TODO: Persist the new password hash in your real user data store.
-  console.info(`Password successfully reset for ${email}`);
+    user.password = password
+  await user.save()
 
   return NextResponse.json({ message: "Password reset successful." });
 }
