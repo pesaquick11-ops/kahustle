@@ -1,32 +1,28 @@
-import SpecializedProductDetailPage from "@/components/specialized-product-detail-page"
-import { MainCategory } from "@/lib/categories"
-import { Vehicle } from "@/models/Vehicle"
+import { VehicleDetail as VehicleDetailType } from "@/lib/vehicles/types"
+import { getServerSession } from "next-auth"
+import { notFound } from "next/navigation"
+import VehicleDetail from "@/components/vehicles/vehicle-detail"
+import { connectToDatabase } from "@/lib/db"
+import { User } from "@/models/User"
+import { canViewVehicleSellerContact } from "@/lib/vehicles/vehicle-permissions"
 
-const asText = (value: unknown) => (typeof value === "string" && value.trim().length > 0 ? value : "N/A")
-const asNumber = (value: unknown) => (typeof value === "number" ? value : null)
+async function getVehicle(id: string): Promise<VehicleDetailType | null> {
+  const base = process.env.NEXTAUTH_URL || "http://localhost:3000"
+  const res = await fetch(`${base}/api/vehicles/${id}`, { cache: "no-store" })
+  if (res.status === 404) return null
+  const json = await res.json()
+  return json.data
+}
 
 export default async function VehicleListingPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
+  const vehicle = await getVehicle(id)
+  if (!vehicle) notFound()
 
-  return (
-    <SpecializedProductDetailPage
-      id={id}
-      config={{
-        category: "vehicles",
-        listingLabel: "Vehicle",
-        model: Vehicle,
-        callbackPrefix: "/vehicles/listing",
-        categoryKey: MainCategory.VEHICLES,
-        requiredViewRoleLabel: "CARBUYER",
-        details: (item) => [
-          { label: "Make", value: asText(item.make) },
-          { label: "Model", value: asText(item.vehicleModel) },
-          { label: "Year", value: asNumber(item.year)?.toString() ?? "N/A" },
-          { label: "Mileage", value: asNumber(item.mileage) !== null ? `${asNumber(item.mileage)?.toLocaleString()} km` : "N/A" },
-          { label: "Fuel", value: asText(item.fuelType) },
-          { label: "Transmission", value: asText(item.transmission) },
-        ],
-      }}
-    />
-  )
+  await connectToDatabase()
+  const session = await getServerSession()
+  const user = session?.user?.email ? await User.findOne({ email: session.user.email }).lean() : null
+  const canView = canViewVehicleSellerContact(user as { roles?: string[] } | null)
+
+  return <main className="mx-auto max-w-6xl p-4"><VehicleDetail vehicle={vehicle} canViewSellerContact={canView} /></main>
 }
