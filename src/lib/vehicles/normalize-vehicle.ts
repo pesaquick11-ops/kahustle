@@ -1,8 +1,16 @@
+
+// lib/vehicles/normalize-vehicle.ts
 import { IVehicle } from "@/models/Vehicle"
 import { formatVehicleTitle } from "./vehicle-formatters"
+import {Types} from "mongoose";
 
 type SellerShape = { _id?: { toString(): string }; name?: string; email?: string; phone?: string; location?: string }
-type AnyVehicle = Partial<IVehicle> & { _id: { toString(): string } | string; userId?: SellerShape; location?: string }
+
+export type AnyVehicle = Partial<IVehicle> & {
+  _id: Types.ObjectId | { toString(): string } | string
+  userId?: SellerShape
+  location?: string
+}
 
 export function normalizeVehicleListing(vehicle: AnyVehicle) {
   const id = typeof vehicle._id === "string" ? vehicle._id : vehicle._id.toString()
@@ -47,3 +55,7 @@ export function normalizeVehicleDetail(vehicle: AnyVehicle, canViewSellerContact
     relatedVehicles: related.map(normalizeVehicleListing),
   }
 }
+
+
+export type VehicleListing = ReturnType<typeof normalizeVehicleListing>
+export type VehicleDetail = ReturnType<typeof normalizeVehicleDetail>
